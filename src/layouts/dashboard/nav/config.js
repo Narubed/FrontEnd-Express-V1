@@ -11,12 +11,22 @@ const navConfig = [
   {
     title: 'dashboard',
     path: '/app',
-    icon: icon('ic_analytics'),
+    icon: <Icon icon="logos:google-analytics" width="26px" />,
   },
   {
     title: 'partners',
     path: '/partners',
-    icon: <Icon icon="carbon:partnership" />,
+    icon: <Icon icon="flat-color-icons:voice-presentation" width="26px" />,
+  },
+  {
+    title: 'IP Address',
+    path: '/ip-address',
+    icon: <Icon icon="fluent-emoji:input-numbers" width="26px" />,
+  },
+  {
+    title: 'COD Express',
+    path: '/cod-express',
+    icon: <Icon icon="emojione-v1:money-with-wings" width="26px" />,
   },
 
   {

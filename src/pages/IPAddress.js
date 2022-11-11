@@ -1,18 +1,18 @@
+/* eslint-disable camelcase */
 import { Helmet } from 'react-helmet-async';
 import { filter } from 'lodash';
-import { sentenceCase } from 'change-case';
-import { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import Swal from 'sweetalert2';
+import dayjs from 'dayjs';
+import 'dayjs/locale/th';
 // @mui
 import {
   Card,
   Table,
   Stack,
   Paper,
-  Avatar,
-  Button,
   Popover,
-  Checkbox,
   TableRow,
   MenuItem,
   TableBody,
@@ -24,22 +24,23 @@ import {
   TablePagination,
 } from '@mui/material';
 // components
-import Label from '../components/label';
+import { setLoading } from '../lib/store/loading';
 import Iconify from '../components/iconify';
 import Scrollbar from '../components/scrollbar';
+import useCurrentUser from '../hooks/useCurrentUser';
+import UpdateIPAddress from '../components/pages/ipaddress/update';
+import CreateIPAddress from '../components/pages/ipaddress/create';
 // sections
-import { UserListHead, UserListToolbar } from '../sections/@dashboard/user';
+import { ListHead, ListToolbar } from '../lib/tabel';
 // mock
-import USERLIST from '../_mock/user';
 
 // ----------------------------------------------------------------------
 
 const TABLE_HEAD = [
-  { id: 'name', label: 'Name', alignRight: false },
-  { id: 'company', label: 'Company', alignRight: false },
-  { id: 'role', label: 'Role', alignRight: false },
-  { id: 'isVerified', label: 'Verified', alignRight: false },
-  { id: 'status', label: 'Status', alignRight: false },
+  { id: 'ip_address', label: 'IP Address', alignRight: false },
+  { id: 'ip_note', label: 'หมายเหตุ', alignRight: false },
+  { id: 'ip_timestamp', label: 'วันที่เพิ่ม', alignRight: false },
+
   { id: '' },
 ];
 
@@ -69,12 +70,19 @@ function applySortFilter(array, comparator, query) {
     return a[1] - b[1];
   });
   if (query) {
-    return filter(array, (_user) => _user.name.toLowerCase().indexOf(query.toLowerCase()) !== -1);
+    return filter(
+      array,
+      (_user) =>
+        _user.ip_address.toLowerCase().indexOf(query.toLowerCase()) !== -1 ||
+        _user.ip_note.toLowerCase().indexOf(query.toLowerCase()) !== -1
+    );
   }
   return stabilizedThis.map((el) => el[0]);
 }
 
 export default function UserPage() {
+  const { currentUser, fetcherWithToken } = useCurrentUser();
+  const dispatch = useDispatch();
   //   const loading = useSelector((state) => state.loading.loading);
 
   const [open, setOpen] = useState(null);
@@ -91,9 +99,34 @@ export default function UserPage() {
 
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  console.log(process.env.REACT_APP_API_EXPRESS_V1);
+  const [isIPAddress, setIPAddress] = useState([]);
 
-  const handleOpenMenu = (event) => {
+  const [isSelectedMenu, setSelectedMenu] = useState({});
+
+  const [isOpenUpdate, setOpenUpdate] = useState(false);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetcherPartner();
+    }
+  }, [currentUser]);
+
+  const fetcherPartner = async () => {
+    dispatch(setLoading(true));
+    const urlIPAddress = `${process.env.REACT_APP_API_EXPRESS_V1}/ip-address`;
+    await fetcherWithToken(urlIPAddress, {
+      method: 'GET',
+    })
+      .then((json) => {
+        setIPAddress(json.data);
+        console.log(json.data);
+      })
+      .catch(() => setIPAddress([]));
+    dispatch(setLoading(false));
+  };
+  const handleOpenMenu = (props) => {
+    const { event, row } = props;
+    setSelectedMenu(row);
     setOpen(event.currentTarget);
   };
 
@@ -109,26 +142,11 @@ export default function UserPage() {
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
-      const newSelecteds = USERLIST.map((n) => n.name);
+      const newSelecteds = isIPAddress.map((n) => n._id);
       setSelected(newSelecteds);
       return;
     }
     setSelected([]);
-  };
-
-  const handleClick = (event, name) => {
-    const selectedIndex = selected.indexOf(name);
-    let newSelected = [];
-    if (selectedIndex === -1) {
-      newSelected = newSelected.concat(selected, name);
-    } else if (selectedIndex === 0) {
-      newSelected = newSelected.concat(selected.slice(1));
-    } else if (selectedIndex === selected.length - 1) {
-      newSelected = newSelected.concat(selected.slice(0, -1));
-    } else if (selectedIndex > 0) {
-      newSelected = newSelected.concat(selected.slice(0, selectedIndex), selected.slice(selectedIndex + 1));
-    }
-    setSelected(newSelected);
   };
 
   const handleChangePage = (event, newPage) => {
@@ -145,75 +163,91 @@ export default function UserPage() {
     setFilterName(event.target.value);
   };
 
-  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - USERLIST.length) : 0;
+  const headleDeleteIPAddress = async () => {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!',
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        dispatch(setLoading(true));
+        const urlPartners = `${process.env.REACT_APP_API_EXPRESS_V1}/ip-address/${isSelectedMenu._id}`;
+        await fetcherWithToken(urlPartners, {
+          method: 'DELETE',
+        }).then(async () => {
+          await fetcherPartner();
+        });
+        dispatch(setLoading(false));
 
-  const filteredUsers = applySortFilter(USERLIST, getComparator(order, orderBy), filterName);
+        Swal.fire({
+          icon: 'success',
+          title: 'ยืนยันการทำรายการ',
+          showConfirmButton: false,
+          timer: 1500,
+        });
+      }
+    });
+  };
+
+  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - isIPAddress.length) : 0;
+
+  const filteredUsers = applySortFilter(isIPAddress, getComparator(order, orderBy), filterName);
 
   const isNotFound = !filteredUsers.length && !!filterName;
 
   return (
     <>
       <Helmet>
-        <title> Partners | NBADigitalservice </title>
+        <title> IP Address | NBADigitalservice </title>
       </Helmet>
 
       <Container>
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
           <Typography variant="h4" gutterBottom>
-            User
+            IP Address
           </Typography>
-          <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />}>
-            New User
-          </Button>
+          <CreateIPAddress
+            fetcherWithToken={fetcherWithToken}
+            dispatch={dispatch}
+            setLoading={setLoading}
+            fetcherPartner={fetcherPartner}
+          />
         </Stack>
 
         <Card>
-          <UserListToolbar numSelected={selected.length} filterName={filterName} onFilterName={handleFilterByName} />
+          <ListToolbar numSelected={selected.length} filterName={filterName} onFilterName={handleFilterByName} />
 
           <Scrollbar>
             <TableContainer sx={{ minWidth: 800 }}>
               <Table>
-                <UserListHead
+                <ListHead
                   order={order}
                   orderBy={orderBy}
                   headLabel={TABLE_HEAD}
-                  rowCount={USERLIST.length}
+                  rowCount={isIPAddress.length}
                   numSelected={selected.length}
                   onRequestSort={handleRequestSort}
                   onSelectAllClick={handleSelectAllClick}
                 />
                 <TableBody>
                   {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
-                    const { id, name, role, status, company, avatarUrl, isVerified } = row;
-                    const selectedUser = selected.indexOf(name) !== -1;
+                    const { _id, ip_address, ip_note, ip_timestamp } = row;
+                    const selectedUser = selected.indexOf(_id) !== -1;
 
                     return (
-                      <TableRow hover key={id} tabIndex={-1} role="checkbox" selected={selectedUser}>
-                        <TableCell padding="checkbox">
-                          <Checkbox checked={selectedUser} onChange={(event) => handleClick(event, name)} />
+                      <TableRow hover key={_id} tabIndex={-1} role="checkbox" selected={selectedUser}>
+                        <TableCell padding="checkbox" />
+                        <TableCell>{ip_address}</TableCell>
+                        <TableCell>{ip_note}</TableCell>
+                        <TableCell>
+                          {dayjs(ip_timestamp).locale('th').add(543, 'year').format('DD MMM YYYY HH:mm')}
                         </TableCell>
-
-                        <TableCell component="th" scope="row" padding="none">
-                          <Stack direction="row" alignItems="center" spacing={2}>
-                            <Avatar alt={name} src={avatarUrl} />
-                            <Typography variant="subtitle2" noWrap>
-                              {name}
-                            </Typography>
-                          </Stack>
-                        </TableCell>
-
-                        <TableCell align="left">{company}</TableCell>
-
-                        <TableCell align="left">{role}</TableCell>
-
-                        <TableCell align="left">{isVerified ? 'Yes' : 'No'}</TableCell>
-
-                        <TableCell align="left">
-                          <Label color={(status === 'banned' && 'error') || 'success'}>{sentenceCase(status)}</Label>
-                        </TableCell>
-
                         <TableCell align="right">
-                          <IconButton size="large" color="inherit" onClick={handleOpenMenu}>
+                          <IconButton size="large" color="inherit" onClick={(event) => handleOpenMenu({ event, row })}>
                             <Iconify icon={'eva:more-vertical-fill'} />
                           </IconButton>
                         </TableCell>
@@ -257,7 +291,7 @@ export default function UserPage() {
           <TablePagination
             rowsPerPageOptions={[5, 10, 25]}
             component="div"
-            count={USERLIST.length}
+            count={isIPAddress.length}
             rowsPerPage={rowsPerPage}
             page={page}
             onPageChange={handleChangePage}
@@ -284,16 +318,36 @@ export default function UserPage() {
           },
         }}
       >
-        <MenuItem>
+        <MenuItem
+          onClick={() => {
+            setOpen(false);
+            setOpenUpdate(true);
+          }}
+        >
           <Iconify icon={'eva:edit-fill'} sx={{ mr: 2 }} />
           Edit
         </MenuItem>
 
-        <MenuItem sx={{ color: 'error.main' }}>
+        <MenuItem
+          sx={{ color: 'error.main' }}
+          onClick={() => {
+            headleDeleteIPAddress();
+            setOpen(false);
+          }}
+        >
           <Iconify icon={'eva:trash-2-outline'} sx={{ mr: 2 }} />
           Delete
         </MenuItem>
       </Popover>
+      <UpdateIPAddress
+        isSelectedMenu={isSelectedMenu}
+        setOpenUpdate={setOpenUpdate}
+        isOpenUpdate={isOpenUpdate}
+        dispatch={dispatch}
+        setLoading={setLoading}
+        fetcherWithToken={fetcherWithToken}
+        fetcherPartner={fetcherPartner}
+      />
     </>
   );
 }

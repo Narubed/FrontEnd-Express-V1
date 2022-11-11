@@ -11,6 +11,7 @@ import Searchbar from './Searchbar';
 import AccountPopover from './AccountPopover';
 import LanguagePopover from './LanguagePopover';
 import NotificationsPopover from './NotificationsPopover';
+import Loading from './Loading';
 
 // ----------------------------------------------------------------------
 
@@ -46,6 +47,7 @@ export default function Header({ onOpenNav }) {
   return (
     <StyledRoot>
       <StyledToolbar>
+        <Loading />
         <IconButton
           onClick={onOpenNav}
           sx={{

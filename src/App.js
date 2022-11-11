@@ -1,5 +1,5 @@
 // routes
-
+import useCurrentUser from './hooks/useCurrentUser';
 
 import Router from './routes';
 import RouterNoToken from './routes.notoken';
@@ -13,8 +13,9 @@ import { StyledChart } from './components/chart';
 // ----------------------------------------------------------------------
 
 export default function App() {
-  const token = true;
-  if (!token) {
+  const { currentUser } = useCurrentUser();
+  console.log(currentUser);
+  if (!currentUser) {
     return (
       <ThemeProvider>
         <ScrollToTop />

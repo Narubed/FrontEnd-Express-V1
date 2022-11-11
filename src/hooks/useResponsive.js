@@ -33,7 +33,6 @@ export default function useResponsive(query, start, end) {
 // ----------------------------------------------------------------------
 
 export function useWidth() {
-  console.log('SimpleLayout');
 
   const theme = useTheme();
 

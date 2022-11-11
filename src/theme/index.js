@@ -1,5 +1,7 @@
 import PropTypes from 'prop-types';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+
 // @mui
 import { CssBaseline } from '@mui/material';
 import { ThemeProvider as MUIThemeProvider, createTheme, StyledEngineProvider } from '@mui/material/styles';
@@ -10,6 +12,7 @@ import typography from './typography';
 import GlobalStyles from './globalStyles';
 import customShadows from './customShadows';
 import componentsOverride from './overrides';
+import { setToken } from '../lib/store/session';
 
 // ----------------------------------------------------------------------
 
@@ -18,6 +21,7 @@ ThemeProvider.propTypes = {
 };
 
 export default function ThemeProvider({ children }) {
+  const dispatch = useDispatch();
   const themeOptions = useMemo(
     () => ({
       palette,
@@ -31,8 +35,11 @@ export default function ThemeProvider({ children }) {
 
   const theme = createTheme(themeOptions);
   theme.components = componentsOverride(theme);
-
-  console.log('SimpleLayout');
+  useEffect(() => {
+    console.log('theme');
+    const jwt = localStorage.getItem('jwt');
+    dispatch(setToken(jwt));
+  }, []);
 
   return (
     <StyledEngineProvider injectFirst>
