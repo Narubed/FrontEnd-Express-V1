@@ -6,6 +6,10 @@ import { filter } from 'lodash';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
+import dayjs from 'dayjs';
+import 'dayjs/locale/th';
+import numeral from 'numeral';
+
 import Swal from 'sweetalert2';
 // @mui
 import {
@@ -31,7 +35,6 @@ import Iconify from '../../components/iconify';
 import Scrollbar from '../../components/scrollbar';
 import useCurrentUser from '../../hooks/useCurrentUser';
 import UpdatePartner from '../../components/pages/partners/update';
-import CreateTokenPartner from '../../components/pages/partners/create.token';
 import CreatePartner from '../../components/pages/partners/create';
 // sections
 import { ListHead, ListToolbar } from '../../lib/tabel';
@@ -40,10 +43,11 @@ import { ListHead, ListToolbar } from '../../lib/tabel';
 // ----------------------------------------------------------------------
 
 const TABLE_HEAD = [
-  { id: 'partner_name', label: 'ชื่อพาร์ตเนอร์', alignRight: false },
-  { id: 'partner_percent', label: 'เปอร์เซ็นที่รับ', alignRight: true },
-  { id: 'partner_status', label: 'สถานะ', alignRight: false },
-  { id: 'partner_webhook', label: 'web hook', alignRight: false },
+  { id: 'cut_id', label: 'เลขที่ตัดรอบ', alignRight: false },
+  { id: 'partner_name', label: 'ชื่อพาร์ตเนอร์', alignRight: true },
+  { id: 'cut_status', label: 'สถานะ', alignRight: true },
+  { id: 'cut_total', label: 'ยอด', alignRight: true },
+  { id: 'cut_timestamp', label: 'วันที่ของสถานะ', alignRight: false },
 
   { id: '' },
 ];
@@ -77,8 +81,9 @@ function applySortFilter(array, comparator, query) {
     return filter(
       array,
       (_user) =>
+        _user.cut_id.toLowerCase().indexOf(query.toLowerCase()) !== -1 ||
         _user.partner_name.toLowerCase().indexOf(query.toLowerCase()) !== -1 ||
-        _user.partner_webhook.toLowerCase().indexOf(query.toLowerCase()) !== -1
+        _user.cut_status.toLowerCase().indexOf(query.toLowerCase()) !== -1
     );
   }
   return stabilizedThis.map((el) => el[0]);
@@ -103,12 +108,11 @@ export default function UserPage() {
 
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  const [isPartners, setPartners] = useState([]);
+  const [isCutAround, setCutAround] = useState([]);
 
   const [isSelectedMenu, setSelectedMenu] = useState({});
 
   const [isOpenUpdate, setOpenUpdate] = useState(false);
-  const [isOpenCreateToken, setOpenCreateToken] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -118,14 +122,23 @@ export default function UserPage() {
 
   const fetcherPartner = async () => {
     dispatch(setLoading(true));
-    const urlPartners = `${process.env.REACT_APP_API_EXPRESS_V1}/partners`;
-    await fetcherWithToken(urlPartners, {
+    const findCutAround = await fetcherWithToken(`${process.env.REACT_APP_API_EXPRESS_V1}/cut-around`, {
       method: 'GET',
-    })
-      .then((json) => {
-        setPartners(json.data);
-      })
-      .catch(() => setPartners([]));
+    });
+    const findPartner = await fetcherWithToken(`${process.env.REACT_APP_API_EXPRESS_V1}/partners`, {
+      method: 'GET',
+    });
+    const newCutAround = [];
+    findCutAround.data.forEach((element) => {
+      const idx = findPartner.data.find((item) => item._id === element.cut_parners_id);
+      if (idx) {
+        newCutAround.push({ ...element, partner_name: idx.partner_name });
+      } else {
+        newCutAround.push({ ...element, partner_name: 'ไม่มี' });
+      }
+    });
+    setCutAround(newCutAround);
+
     dispatch(setLoading(false));
   };
   const handleOpenMenu = (props) => {
@@ -146,7 +159,7 @@ export default function UserPage() {
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
-      const newSelecteds = isPartners.map((n) => n._id);
+      const newSelecteds = filteredUsers.map((n) => n._id);
       setSelected(newSelecteds);
       return;
     }
@@ -165,19 +178,6 @@ export default function UserPage() {
   const handleFilterByName = (event) => {
     setPage(0);
     setFilterName(event.target.value);
-  };
-
-  const headleCheckStatus = async ({ event, _id }) => {
-    dispatch(setLoading(true));
-    const urlPartners = `${process.env.REACT_APP_API_EXPRESS_V1}/partners/${_id}`;
-    await fetcherWithToken(urlPartners, {
-      method: 'PUT',
-      body: JSON.stringify({ partner_status: event.target.checked }),
-    }).then(async () => {
-      await fetcherPartner();
-    });
-
-    dispatch(setLoading(false));
   };
 
   const headleDeleteParner = async () => {
@@ -210,9 +210,9 @@ export default function UserPage() {
     });
   };
 
-  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - isPartners.length) : 0;
+  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - isCutAround.length) : 0;
 
-  const filteredUsers = applySortFilter(isPartners, getComparator(order, orderBy), filterName);
+  const filteredUsers = applySortFilter(isCutAround, getComparator(order, orderBy), filterName);
 
   const isNotFound = !filteredUsers.length && !!filterName;
 
@@ -225,14 +225,14 @@ export default function UserPage() {
       <Container>
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
           <Typography variant="h4" gutterBottom>
-            Partners
+            รายการที่ถูกตัดรอบแล้ว
           </Typography>
-          <CreatePartner
+          {/* <CreatePartner
             fetcherWithToken={fetcherWithToken}
             dispatch={dispatch}
             setLoading={setLoading}
             fetcherPartner={fetcherPartner}
-          />
+          /> */}
         </Stack>
 
         <Card>
@@ -245,31 +245,28 @@ export default function UserPage() {
                   order={order}
                   orderBy={orderBy}
                   headLabel={TABLE_HEAD}
-                  rowCount={isPartners.length}
+                  rowCount={filteredUsers.length}
                   numSelected={selected.length}
                   onRequestSort={handleRequestSort}
                   onSelectAllClick={handleSelectAllClick}
                 />
                 <TableBody>
                   {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
-                    const { _id, partner_name, partner_percent, partner_status, partner_webhook } = row;
+                    const { _id, cut_id, cut_status, partner_name, cut_timestamp, cut_total } = row;
                     const selectedUser = selected.indexOf(_id) !== -1;
 
                     return (
                       <TableRow hover key={_id} tabIndex={-1} role="checkbox" selected={selectedUser}>
                         <TableCell padding="checkbox" />
-                        <TableCell>{partner_name}</TableCell>
-                        <TableCell align="center">{partner_percent}</TableCell>
+                        <TableCell>{cut_id}</TableCell>
+                        <TableCell align="center">{partner_name}</TableCell>
+                        <TableCell align="center">{cut_status}</TableCell>
+                        <TableCell align="center">{numeral(cut_total).format('0,0.00')}</TableCell>
                         <TableCell>
-                          <Switch
-                            checked={partner_status}
-                            inputProps={{ 'aria-label': 'Switch demo' }}
-                            onChange={(event) => headleCheckStatus({ event, _id })}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {' '}
-                          {partner_webhook.length > 25 ? `${partner_webhook.substring(0, 50)}...` : partner_webhook}
+                          {dayjs(cut_timestamp[cut_timestamp.length - 1].timestamp)
+                            .locale('th')
+                            .add(543, 'year')
+                            .format('DD MMM YYYY HH:mm')}
                         </TableCell>
 
                         <TableCell align="right">
@@ -317,7 +314,7 @@ export default function UserPage() {
           <TablePagination
             rowsPerPageOptions={[5, 10, 25]}
             component="div"
-            count={isPartners.length}
+            count={filteredUsers.length}
             rowsPerPage={rowsPerPage}
             page={page}
             onPageChange={handleChangePage}
@@ -344,36 +341,6 @@ export default function UserPage() {
           },
         }}
       >
-        <Link
-          to={{
-            pathname: '/partners/statistics',
-            search: isSelectedMenu._id,
-            state: { fromDashboard: true },
-          }}
-        >
-          {/* <Link to={{ pathname: '/partners/statistics', query: { search: '123456' } }}> */}
-          <MenuItem
-            sx={{ color: 'warning.main' }}
-            onClick={() => {
-              setOpen(false);
-            }}
-          >
-            <Iconify icon={'logos:google-analytics'} sx={{ mr: 2 }} />
-            {'Statistics'}
-          </MenuItem>
-        </Link>
-
-        <MenuItem
-          sx={{ color: 'primary.main' }}
-          onClick={() => {
-            setOpen(false);
-            setOpenCreateToken(true);
-          }}
-        >
-          <Iconify icon={'ic:outline-create-new-folder'} sx={{ mr: 2 }} />
-          Create Token
-        </MenuItem>
-
         <MenuItem
           sx={{ color: 'info.main' }}
           onClick={() => {
@@ -396,7 +363,7 @@ export default function UserPage() {
           Delete
         </MenuItem>
       </Popover>
-      <CreateTokenPartner
+      {/* <CreateTokenPartner
         isSelectedMenu={isSelectedMenu}
         setOpenCreateToken={setOpenCreateToken}
         isOpenCreateToken={isOpenCreateToken}
@@ -404,7 +371,7 @@ export default function UserPage() {
         setLoading={setLoading}
         fetcherWithToken={fetcherWithToken}
         fetcherPartner={fetcherPartner}
-      />
+      /> */}
 
       <UpdatePartner
         isSelectedMenu={isSelectedMenu}

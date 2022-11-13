@@ -1,50 +1,52 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react/prop-types */
 /* eslint-disable camelcase */
 import { Helmet } from 'react-helmet-async';
 import { filter } from 'lodash';
 import { useState, useEffect } from 'react';
-
-import { Link, useLocation } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { Calendar } from 'primereact/calendar';
+import dayjs from 'dayjs';
+import numeral from 'numeral';
 import Swal from 'sweetalert2';
+import { useLocation } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 // @mui
 import {
   Card,
   Table,
   Stack,
   Paper,
-  Popover,
-  Switch,
+  Button,
   TableRow,
-  MenuItem,
   TableBody,
   TableCell,
   Container,
   Typography,
-  IconButton,
   TableContainer,
   TablePagination,
+  Checkbox,
 } from '@mui/material';
 // components
 import { setLoading } from '../../../lib/store/loading';
-import Iconify from '../../../components/iconify';
 import Scrollbar from '../../../components/scrollbar';
 import useCurrentUser from '../../../hooks/useCurrentUser';
-import UpdatePartner from '../../../components/pages/partners/update';
-import CreateTokenPartner from '../../../components/pages/partners/create.token';
-import CreatePartner from '../../../components/pages/partners/create';
 // sections
-import { ListHead, ListToolbar } from '../../../lib/tabel';
+
+import StateListToolbar from '../../../components/pages/partners/statistics/StateListToolbar';
+import StateListHead from '../../../components/pages/partners/statistics/StateListHead';
+
 // mock
 
 // ----------------------------------------------------------------------
 
 const TABLE_HEAD = [
-  { id: 'partner_name', label: 'ชื่อพาร์ตเนอร์', alignRight: false },
-  { id: 'partner_percent', label: 'เปอร์เซ็นที่รับ', alignRight: true },
-  { id: 'partner_status', label: 'สถานะ', alignRight: false },
-  { id: 'partner_webhook', label: 'web hook', alignRight: false },
-
-  { id: '' },
+  { id: 'purchase_id', label: 'เลขออเดอร์', alignRight: false },
+  { id: 'tracking_code', label: 'tracking', alignRight: false },
+  { id: 'courier_code', label: 'ขนส่ง', alignRight: false },
+  { id: 'courier_status', label: 'สถานะ', alignRight: false },
+  { id: 'price', label: 'ราคา', alignRight: false },
+  { id: 'datetime_order', label: 'วันที่รับออเดอร์', alignRight: false },
+  { id: 'datetime_shipping', label: 'วันที่ขนส่งเข้ารับ', alignRight: false },
 ];
 
 // ----------------------------------------------------------------------
@@ -76,8 +78,11 @@ function applySortFilter(array, comparator, query) {
     return filter(
       array,
       (_user) =>
-        _user.partner_name.toLowerCase().indexOf(query.toLowerCase()) !== -1 ||
-        _user.partner_webhook.toLowerCase().indexOf(query.toLowerCase()) !== -1
+        _user.tracking_code.toLowerCase().indexOf(query.toLowerCase()) !== -1 ||
+        _user.courier_code.toLowerCase().indexOf(query.toLowerCase()) !== -1 ||
+        _user.courier_status.toLowerCase().indexOf(query.toLowerCase()) !== -1 ||
+        _user.datetime_order.toLowerCase().indexOf(query.toLowerCase()) !== -1 ||
+        _user.datetime_shipping.toLowerCase().indexOf(query.toLowerCase()) !== -1
     );
   }
   return stabilizedThis.map((el) => el[0]);
@@ -88,11 +93,6 @@ export default function UserPage() {
   const dispatch = useDispatch();
   const { search } = useLocation();
   const query = search.substring(1);
-  console.log(query);
-
-  //   const loading = useSelector((state) => state.loading.loading);
-
-  const [open, setOpen] = useState(null);
 
   const [page, setPage] = useState(0);
 
@@ -106,12 +106,11 @@ export default function UserPage() {
 
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  const [isPartners, setPartners] = useState([]);
+  const [isState, setState] = useState([]);
+  const [isOldState, setOldState] = useState([]);
+  const [isStatus, setStatus] = useState([]);
 
-  const [isSelectedMenu, setSelectedMenu] = useState({});
-
-  const [isOpenUpdate, setOpenUpdate] = useState(false);
-  const [isOpenCreateToken, setOpenCreateToken] = useState(false);
+  const [dates, setDates] = useState(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -119,28 +118,51 @@ export default function UserPage() {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    const newState = [];
+    if (isStatus.length !== 0) {
+      isStatus.forEach((element) => {
+        const filterByStatus = isOldState.filter((item) => item.courier_status === element);
+        if (filterByStatus.length !== 0) {
+          filterByStatus.map((item) => newState.push(item));
+        }
+      });
+      setState(newState);
+    } else {
+      setState(isOldState);
+    }
+  }, [isStatus]);
+
   const fetcherData = async () => {
     dispatch(setLoading(true));
     const urlPartners = `${process.env.REACT_APP_API_EXPRESS_V1}/purchase/purchase-courier`;
     await fetcherWithToken(urlPartners, {
       method: 'GET',
     })
-      .then((json) => {
-        console.log(json);
-        // setPartners(json.data);
-        console.log(json.data);
+      .then(async (json) => {
+        // setState(json.data);
+        const filterStatus = json.data.filter((item) => item.purchase_status === 'paid');
+        await filterAndfindTrackingCode(filterStatus);
       })
-      .catch(() => setPartners([]));
+      .catch(() => setState([]));
     dispatch(setLoading(false));
   };
-  const handleOpenMenu = (props) => {
-    const { event, row } = props;
-    setSelectedMenu(row);
-    setOpen(event.currentTarget);
-  };
-
-  const handleCloseMenu = () => {
-    setOpen(null);
+  const filterAndfindTrackingCode = (props) => {
+    const filterPartnerById = props.filter((item) => item.partner_id === query);
+    // filterStatus ของ Tracking ก่อนด้วย
+    const newArray = [];
+    filterPartnerById.forEach((element) => {
+      const filterCourier = element.all;
+      filterCourier.map((item) => newArray.push(item));
+    });
+    const filteredCutAround = [];
+    newArray.forEach((element) => {
+      if (element && !element.courier_cutarourd) {
+        filteredCutAround.push(element);
+      }
+    });
+    setOldState(filteredCutAround);
+    setState(filteredCutAround);
   };
 
   const handleRequestSort = (event, property) => {
@@ -151,7 +173,7 @@ export default function UserPage() {
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
-      const newSelecteds = isPartners.map((n) => n._id);
+      const newSelecteds = filteredUsers.map((n) => n._id);
       setSelected(newSelecteds);
       return;
     }
@@ -172,116 +194,188 @@ export default function UserPage() {
     setFilterName(event.target.value);
   };
 
-  const headleCheckStatus = async ({ event, _id }) => {
-    dispatch(setLoading(true));
-    const urlPartners = `${process.env.REACT_APP_API_EXPRESS_V1}/partners/${_id}`;
-    await fetcherWithToken(urlPartners, {
-      method: 'PUT',
-      body: JSON.stringify({ partner_status: event.target.checked }),
-    }).then(async () => {
-      await fetcherData();
-    });
-
-    dispatch(setLoading(false));
+  const handleClick = (event, name) => {
+    const selectedIndex = selected.indexOf(name);
+    let newSelected = [];
+    if (selectedIndex === -1) {
+      newSelected = newSelected.concat(selected, name);
+    } else if (selectedIndex === 0) {
+      newSelected = newSelected.concat(selected.slice(1));
+    } else if (selectedIndex === selected.length - 1) {
+      newSelected = newSelected.concat(selected.slice(0, -1));
+    } else if (selectedIndex > 0) {
+      newSelected = newSelected.concat(selected.slice(0, selectedIndex), selected.slice(selectedIndex + 1));
+    }
+    setSelected(newSelected);
   };
 
-  const headleDeleteParner = async () => {
+  const onChangeDatePicker = (event) => {
+    setDates(event.value);
+  };
+
+  const onClickCurAround = () => {
     Swal.fire({
       title: 'Are you sure?',
-      text: "You won't be able to revert this!",
+      text: 'คุณต้องการตัดรอบรายการทั้งหมดนี้หรือไม่',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, delete it!',
+      confirmButtonColor: 'primary',
+      cancelButtonColor: 'error',
+      confirmButtonText: 'ยืนยัน',
+      cancelButtonText: 'ยกเลิก',
     }).then(async (result) => {
       if (result.isConfirmed) {
         dispatch(setLoading(true));
-        const urlPartners = `${process.env.REACT_APP_API_EXPRESS_V1}/partners/${isSelectedMenu._id}`;
-        await fetcherWithToken(urlPartners, {
-          method: 'DELETE',
-        }).then(async () => {
-          await fetcherData();
+
+        const total = [];
+        selected.forEach((element) => {
+          const idx = isOldState.findIndex((item) => item._id === element);
+          if (idx !== -1) {
+            total.push(isOldState[idx].price);
+            // isOldState[idx]
+          }
+        });
+
+        const urlTax = `${process.env.REACT_APP_API_EXPRESS_V1}/check/tax/cut-around`;
+        const findTax = await fetcherWithToken(urlTax, {
+          method: 'POST',
+          body: JSON.stringify({ date: Date.now() }),
+        });
+        const postCutAround = {
+          cut_id: findTax.tax,
+          cut_parners_id: query,
+          cut_status: 'ตัดรอบการชำระแล้ว',
+          cut_total: total.reduce((sum, item) => sum + item, 0),
+          cut_timestamp: [
+            {
+              name: 'ตัดรอบการชำระแล้ว',
+              timestamp: Date.now(),
+            },
+          ],
+        };
+        const urlCutAround = `${process.env.REACT_APP_API_EXPRESS_V1}/cut-around`;
+        await fetcherWithToken(urlCutAround, {
+          method: 'POST',
+          body: JSON.stringify(postCutAround),
+        });
+
+        await fetcherWithToken(urlTax, {
+          method: 'POST',
+          body: JSON.stringify({ date: Date.now() }),
+        });
+
+        const url = `${process.env.REACT_APP_API_EXPRESS_V1}/courier/update-cut-around`;
+        const dataPostCutAround = {
+          courier_id: selected,
+          tax: findTax.tax,
+        };
+        await fetcherWithToken(url, {
+          method: 'POST',
+          body: JSON.stringify(dataPostCutAround),
         });
         dispatch(setLoading(false));
-
         Swal.fire({
           icon: 'success',
           title: 'ยืนยันการทำรายการ',
           showConfirmButton: false,
           timer: 1500,
         });
+        setTimeout(async () => {
+          setSelected([]);
+          setStatus([]);
+          setDates(null);
+          await fetcherData();
+        }, 1500);
       }
     });
   };
 
-  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - isPartners.length) : 0;
+  const newStates =
+    dates !== null && dates.length >= 2
+      ? isState.filter(
+          (item) =>
+            dayjs(item.datetime_shipping).format('DD MM YYYY') >= dayjs(dates[0]).format('DD MM YYYY') &&
+            dayjs(item.datetime_shipping).format('DD MM YYYY') <= dayjs(dates[1]).format('DD MM YYYY')
+        )
+      : isState;
 
-  const filteredUsers = applySortFilter(isPartners, getComparator(order, orderBy), filterName);
+  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - newStates.length) : 0;
+
+  const filteredUsers = applySortFilter(newStates, getComparator(order, orderBy), filterName);
 
   const isNotFound = !filteredUsers.length && !!filterName;
 
   return (
     <>
       <Helmet>
-        <title> Partners | NBADigitalservice </title>
+        <title> Statistics | NBADigitalservice </title>
       </Helmet>
 
       <Container>
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
           <Typography variant="h4" gutterBottom>
-            Partners
+            Statistics (รายการที่ยังไม่ถูกตัดรอบทั้งหมด)
           </Typography>
-          <CreatePartner
-            fetcherWithToken={fetcherWithToken}
-            dispatch={dispatch}
-            setLoading={setLoading}
-            fetcherData={fetcherData}
-          />
         </Stack>
 
         <Card>
-          <ListToolbar numSelected={selected.length} filterName={filterName} onFilterName={handleFilterByName} />
+          <StateListToolbar
+            onClickCurAround={onClickCurAround}
+            numSelected={selected.length}
+            filterName={filterName}
+            onFilterName={handleFilterByName}
+            isOldState={isOldState}
+            isStatus={isStatus}
+            setStatus={setStatus}
+          />
+
+          <div style={{ padding: '0px 24px' }}>
+            ค้นหาตามวันที่ ขนส่งเข้ารับออเดอร์ <br />
+            {selected.length < 1 && (
+              <Calendar id="range" value={dates} onChange={onChangeDatePicker} selectionMode="range" readOnlyInput />
+            )}
+            <Button onClick={() => setDates(null)}>RESET</Button>
+          </div>
 
           <Scrollbar>
             <TableContainer sx={{ minWidth: 800 }}>
               <Table>
-                <ListHead
+                <StateListHead
                   order={order}
                   orderBy={orderBy}
                   headLabel={TABLE_HEAD}
-                  rowCount={isPartners.length}
+                  rowCount={isState.length}
                   numSelected={selected.length}
                   onRequestSort={handleRequestSort}
                   onSelectAllClick={handleSelectAllClick}
                 />
+
                 <TableBody>
                   {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
-                    const { _id, partner_name, partner_percent, partner_status, partner_webhook } = row;
+                    const {
+                      _id,
+                      courier_code,
+                      courier_status,
+                      tracking_code,
+                      datetime_order,
+                      datetime_shipping,
+                      purchase_id,
+                      price,
+                    } = row;
                     const selectedUser = selected.indexOf(_id) !== -1;
 
                     return (
                       <TableRow hover key={_id} tabIndex={-1} role="checkbox" selected={selectedUser}>
-                        <TableCell padding="checkbox" />
-                        <TableCell>{partner_name}</TableCell>
-                        <TableCell align="center">{partner_percent}</TableCell>
-                        <TableCell>
-                          <Switch
-                            checked={partner_status}
-                            inputProps={{ 'aria-label': 'Switch demo' }}
-                            onChange={(event) => headleCheckStatus({ event, _id })}
-                          />
+                        <TableCell padding="checkbox">
+                          <Checkbox checked={selectedUser} onChange={(event) => handleClick(event, _id)} />
                         </TableCell>
-                        <TableCell>
-                          {' '}
-                          {partner_webhook.length > 25 ? `${partner_webhook.substring(0, 50)}...` : partner_webhook}
-                        </TableCell>
-
-                        <TableCell align="right">
-                          <IconButton size="large" color="inherit" onClick={(event) => handleOpenMenu({ event, row })}>
-                            <Iconify icon={'eva:more-vertical-fill'} />
-                          </IconButton>
-                        </TableCell>
+                        <TableCell>{purchase_id}</TableCell>
+                        <TableCell>{tracking_code}</TableCell>
+                        <TableCell>{courier_code}</TableCell>
+                        <TableCell>{courier_status}</TableCell>
+                        <TableCell>{numeral(price).format('0,0.00')}</TableCell>
+                        <TableCell>{datetime_order}</TableCell>
+                        <TableCell>{datetime_shipping}</TableCell>
                       </TableRow>
                     );
                   })}
@@ -318,11 +412,10 @@ export default function UserPage() {
               </Table>
             </TableContainer>
           </Scrollbar>
-
           <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
+            rowsPerPageOptions={[5, 10, 25, 50, 100, 200]}
             component="div"
-            count={isPartners.length}
+            count={filteredUsers.length}
             rowsPerPage={rowsPerPage}
             page={page}
             onPageChange={handleChangePage}
@@ -330,96 +423,6 @@ export default function UserPage() {
           />
         </Card>
       </Container>
-
-      <Popover
-        open={Boolean(open)}
-        anchorEl={open}
-        onClose={handleCloseMenu}
-        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        PaperProps={{
-          sx: {
-            p: 1,
-            width: 180,
-            '& .MuiMenuItem-root': {
-              px: 1,
-              typography: 'body2',
-              borderRadius: 0.75,
-            },
-          },
-        }}
-      >
-        <Link
-          to={{
-            pathname: '/partners/statistics',
-            search: isSelectedMenu._id,
-            state: { fromDashboard: true },
-          }}
-        >
-          {/* <Link to={{ pathname: '/partners/statistics', query: { search: '123456' } }}> */}
-          <MenuItem
-            sx={{ color: 'primary.main' }}
-            onClick={() => {
-              setOpen(false);
-            }}
-          >
-            <Iconify icon={'ic:outline-create-new-folder'} sx={{ mr: 2 }} />
-            Statistics
-          </MenuItem>
-        </Link>
-
-        <MenuItem
-          sx={{ color: 'primary.main' }}
-          onClick={() => {
-            setOpen(false);
-            setOpenCreateToken(true);
-          }}
-        >
-          <Iconify icon={'ic:outline-create-new-folder'} sx={{ mr: 2 }} />
-          Create Token
-        </MenuItem>
-
-        <MenuItem
-          sx={{ color: 'info.main' }}
-          onClick={() => {
-            setOpen(false);
-            setOpenUpdate(true);
-          }}
-        >
-          <Iconify icon={'eva:edit-fill'} sx={{ mr: 2 }} />
-          Edit
-        </MenuItem>
-
-        <MenuItem
-          sx={{ color: 'error.main' }}
-          onClick={() => {
-            headleDeleteParner();
-            setOpen(false);
-          }}
-        >
-          <Iconify icon={'eva:trash-2-outline'} sx={{ mr: 2 }} />
-          Delete
-        </MenuItem>
-      </Popover>
-      <CreateTokenPartner
-        isSelectedMenu={isSelectedMenu}
-        setOpenCreateToken={setOpenCreateToken}
-        isOpenCreateToken={isOpenCreateToken}
-        dispatch={dispatch}
-        setLoading={setLoading}
-        fetcherWithToken={fetcherWithToken}
-        fetcherData={fetcherData}
-      />
-
-      <UpdatePartner
-        isSelectedMenu={isSelectedMenu}
-        setOpenUpdate={setOpenUpdate}
-        isOpenUpdate={isOpenUpdate}
-        dispatch={dispatch}
-        setLoading={setLoading}
-        fetcherWithToken={fetcherWithToken}
-        fetcherData={fetcherData}
-      />
     </>
   );
 }

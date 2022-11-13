@@ -12,7 +12,10 @@ import DashboardAppPage from './pages/DashboardAppPage';
 import Partners from './pages/Partners';
 import IPAddress from './pages/IPAddress';
 import CODExpress from './pages/CODExpress';
+import CutAround from './pages/CutAround';
+// NOT SHOW IN MENU -------------------------------
 import Statistics from './pages/Partners/Statistics';
+
 // ----------------------------------------------------------------------
 
 export default function Router() {
@@ -29,6 +32,8 @@ export default function Router() {
         { path: 'partners', element: <Partners /> },
         { path: 'ip-address', element: <IPAddress /> },
         { path: 'cod-express', element: <CODExpress /> },
+        { path: 'cut-around', element: <CutAround /> },
+        // NOT SHOW IN MENU -------------------------------
         { path: 'partners/statistics', element: <Statistics /> },
       ],
     },

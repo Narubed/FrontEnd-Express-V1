@@ -28,6 +28,12 @@ const navConfig = [
     path: '/cod-express',
     icon: <Icon icon="emojione-v1:money-with-wings" width="26px" />,
   },
+  {
+    title: 'Cut Around',
+    path: '/cut-around',
+    icon: <Icon icon="emojione:card-file-box" width="26px" />,
+  },
+
 
   {
     title: 'user',
