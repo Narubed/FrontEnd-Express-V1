@@ -27,13 +27,12 @@ import {
   Checkbox,
 } from '@mui/material';
 // components
-import { setLoading } from '../../../lib/store/loading';
-import Scrollbar from '../../../components/scrollbar';
-import useCurrentUser from '../../../hooks/useCurrentUser';
+import { setLoading } from '../../../../lib/store/loading';
+import Scrollbar from '../../../../components/scrollbar';
+import useCurrentUser from '../../../../hooks/useCurrentUser';
 // sections
 
-import StateListToolbar from '../../../components/pages/partners/statistics/StateListToolbar';
-import StateListHead from '../../../components/pages/partners/statistics/StateListHead';
+import { ListHead, ListToolbar } from '../../../../lib/tabel';
 
 // mock
 
@@ -114,7 +113,6 @@ export default function UserPage() {
 
   useEffect(() => {
     if (currentUser) {
-   
       fetcherData();
     }
   }, [currentUser]);
@@ -136,7 +134,7 @@ export default function UserPage() {
 
   const fetcherData = async () => {
     dispatch(setLoading(true));
-    const urlPartners = `${process.env.REACT_APP_API_EXPRESS_V1}/purchase/purchase-courier`;
+    const urlPartners = `${process.env.REACT_APP_API_EXPRESS_DEV}/purchase/purchase-courier`;
     await fetcherWithToken(urlPartners, {
       method: 'GET',
     })
@@ -210,12 +208,7 @@ export default function UserPage() {
     setSelected(newSelected);
   };
 
-  const onChangeDatePicker = (event) => {
-    setDates(event.value);
-  };
-
   const onClickCurAround = () => {
-    console.log(currentUser)
     Swal.fire({
       title: 'Are you sure?',
       text: 'คุณต้องการตัดรอบรายการทั้งหมดนี้หรือไม่',
@@ -238,7 +231,7 @@ export default function UserPage() {
           }
         });
 
-        const urlTax = `${process.env.REACT_APP_API_EXPRESS_V1}/check/tax/cut-around`;
+        const urlTax = `${process.env.REACT_APP_API_EXPRESS_DEV}/check/tax/cut-around`;
         const findTax = await fetcherWithToken(urlTax, {
           method: 'POST',
           body: JSON.stringify({ date: Date.now() }),
@@ -251,12 +244,11 @@ export default function UserPage() {
           cut_timestamp: [
             {
               name: 'ตัดรอบการชำระแล้ว',
-              admin: currentUser.admin_name,
               timestamp: Date.now(),
             },
           ],
         };
-        const urlCutAround = `${process.env.REACT_APP_API_EXPRESS_V1}/cut-around`;
+        const urlCutAround = `${process.env.REACT_APP_API_EXPRESS_DEV}/cut-around`;
         await fetcherWithToken(urlCutAround, {
           method: 'POST',
           body: JSON.stringify(postCutAround),
@@ -267,7 +259,7 @@ export default function UserPage() {
           body: JSON.stringify({ date: Date.now() }),
         });
 
-        const url = `${process.env.REACT_APP_API_EXPRESS_V1}/courier/update-cut-around`;
+        const url = `${process.env.REACT_APP_API_EXPRESS_DEV}/courier/update-cut-around`;
         const dataPostCutAround = {
           courier_id: selected,
           tax: findTax.tax,
@@ -322,7 +314,7 @@ export default function UserPage() {
         </Stack>
 
         <Card>
-          <StateListToolbar
+          <ListToolbar
             onClickCurAround={onClickCurAround}
             numSelected={selected.length}
             filterName={filterName}
@@ -332,18 +324,10 @@ export default function UserPage() {
             setStatus={setStatus}
           />
 
-          <div style={{ padding: '0px 24px' }}>
-            ค้นหาตามวันที่ ขนส่งเข้ารับออเดอร์ <br />
-            {selected.length < 1 && (
-              <Calendar id="range" value={dates} onChange={onChangeDatePicker} selectionMode="range" readOnlyInput />
-            )}
-            <Button onClick={() => setDates(null)}>RESET</Button>
-          </div>
-
           <Scrollbar>
             <TableContainer sx={{ minWidth: 800 }}>
               <Table>
-                <StateListHead
+                <ListHead
                   order={order}
                   orderBy={orderBy}
                   headLabel={TABLE_HEAD}

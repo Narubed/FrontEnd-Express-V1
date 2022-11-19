@@ -29,8 +29,8 @@ export default function LoginForm() {
   });
 
   const defaultValues = {
-    email: 'aof@gmail.com',
-    password: '987654321',
+    email: '',
+    password: '',
     remember: true,
   };
 

@@ -1,8 +1,8 @@
 import PropTypes from 'prop-types';
 import { Icon } from '@iconify/react';
-
+import ReactToPrint from 'react-to-print';
 import { styled } from '@mui/material/styles';
-import { Toolbar, Typography, OutlinedInput, InputAdornment } from '@mui/material';
+import { Toolbar, Typography, OutlinedInput, InputAdornment, Button } from '@mui/material';
 
 // ----------------------------------------------------------------------
 
@@ -32,9 +32,10 @@ ListToolbar.propTypes = {
   numSelected: PropTypes.number,
   filterName: PropTypes.string,
   onFilterName: PropTypes.func,
+  componentToPrintFullA4: PropTypes.func,
 };
 
-export default function ListToolbar({ numSelected, filterName, onFilterName }) {
+export default function ListToolbar({ numSelected, filterName, onFilterName, componentToPrintFullA4 }) {
   return (
     <RootStyle
       sx={{
@@ -61,6 +62,14 @@ export default function ListToolbar({ numSelected, filterName, onFilterName }) {
           }
         />
       )}
+      <ReactToPrint
+        trigger={() => (
+          <Button variant="outlined" startIcon={<Icon icon="ic:round-print" />} sx={{ m: 1 }}>
+            พิมพ์ (A4)
+          </Button>
+        )}
+        content={() => componentToPrintFullA4.current}
+      />
     </RootStyle>
   );
 }

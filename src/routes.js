@@ -14,8 +14,15 @@ import IPAddress from './pages/IPAddress';
 import CODExpress from './pages/CODExpress';
 import CutAround from './pages/CutAround';
 // NOT SHOW IN MENU -------------------------------
-import Statistics from './pages/Partners/Statistics';
+import PartnersStatistics from './pages/Partners/Statistics';
+import CutAroundStatistics from './pages/CutAround/Statistics';
+import Admins from './pages/Admins';
 
+// Branch Dev
+import PartnersDev from './pages/BranchDev/Partners';
+import IPAddressDev from './pages/BranchDev/IPAddress';
+
+import PartnersStatisticsDev from './pages/BranchDev/Partners/Statistics';
 // ----------------------------------------------------------------------
 
 export default function Router() {
@@ -33,8 +40,14 @@ export default function Router() {
         { path: 'ip-address', element: <IPAddress /> },
         { path: 'cod-express', element: <CODExpress /> },
         { path: 'cut-around', element: <CutAround /> },
+        { path: 'admins', element: <Admins /> },
         // NOT SHOW IN MENU -------------------------------
-        { path: 'partners/statistics', element: <Statistics /> },
+        { path: 'partners/statistics', element: <PartnersStatistics /> },
+        { path: 'cut-around/statistics', element: <CutAroundStatistics /> },
+        // Branch Dev
+        { path: 'dev/partners', element: <PartnersDev /> },
+        { path: 'dev/ip-address', element: <IPAddressDev /> },
+        { path: 'dev/partners/statistics', element: <PartnersStatisticsDev /> },
       ],
     },
     {

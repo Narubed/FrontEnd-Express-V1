@@ -1,41 +1,23 @@
-import PropTypes from "prop-types";
-import { visuallyHidden } from "@mui/utils";
-import {
-  Box,
-  Checkbox,
-  TableRow,
-  TableCell,
-  TableHead,
-  TableSortLabel,
-} from "@mui/material";
+import PropTypes from 'prop-types';
+import { visuallyHidden } from '@mui/utils';
+import { Box, Checkbox, TableRow, TableCell, TableHead, TableSortLabel } from '@mui/material';
 
 // ----------------------------------------------------------------------
 
 MemberListHead.propTypes = {
-  order: PropTypes.oneOf(["asc", "desc"]),
+  order: PropTypes.oneOf(['asc', 'desc']),
   orderBy: PropTypes.string,
-  rowCount: PropTypes.number,
   headLabel: PropTypes.array,
-  numSelected: PropTypes.number,
   onRequestSort: PropTypes.func,
-  onSelectAllClick: PropTypes.func,
 };
 
-export default function MemberListHead({
-  order,
-  orderBy,
-  rowCount,
-  headLabel,
-  numSelected,
-  onRequestSort,
-  onSelectAllClick,
-}) {
+export default function MemberListHead({ order, orderBy, headLabel, onRequestSort }) {
   const createSortHandler = (property) => (event) => {
     onRequestSort(event, property);
   };
 
   return (
-    <TableHead >
+    <TableHead>
       <TableRow>
         <TableCell padding="checkbox">
           {/* <Checkbox
@@ -46,22 +28,20 @@ export default function MemberListHead({
         </TableCell>
         {headLabel.map((headCell) => (
           <TableCell
-            sx={{ fontSize: "16px",color: 'primary.main' }}
+            sx={{ fontSize: '16px', color: 'primary.main' }}
             key={headCell.id}
-            align={headCell.alignRight ? "center" : "left"}
+            align={headCell.alignRight ? 'center' : 'left'}
             sortDirection={orderBy === headCell.id ? order : false}
           >
             <TableSortLabel
               hideSortIcon
               active={orderBy === headCell.id}
-              direction={orderBy === headCell.id ? order : "asc"}
+              direction={orderBy === headCell.id ? order : 'asc'}
               onClick={createSortHandler(headCell.id)}
             >
               {headCell.label}
               {orderBy === headCell.id ? (
-                <Box sx={{ ...visuallyHidden }}>
-                  {order === "desc" ? "sorted descending" : "sorted ascending"}
-                </Box>
+                <Box sx={{ ...visuallyHidden }}>{order === 'desc' ? 'sorted descending' : 'sorted ascending'}</Box>
               ) : null}
             </TableSortLabel>
           </TableCell>

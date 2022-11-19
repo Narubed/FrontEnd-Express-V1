@@ -1,32 +1,19 @@
 import { useState } from 'react';
 // @mui
+import { Icon } from '@iconify/react';
 import { alpha } from '@mui/material/styles';
 import { Box, Divider, Typography, Stack, MenuItem, Avatar, IconButton, Popover } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 // mocks_
 import useCurrentUser from '../../../hooks/useCurrentUser';
 import account from '../../../_mock/account';
 
-// ----------------------------------------------------------------------
-
-const MENU_OPTIONS = [
-  {
-    label: 'Home',
-    icon: 'eva:home-fill',
-  },
-  {
-    label: 'Profile',
-    icon: 'eva:person-fill',
-  },
-  {
-    label: 'Settings',
-    icon: 'eva:settings-2-fill',
-  },
-];
 
 // ----------------------------------------------------------------------
 
 export default function AccountPopover() {
-  const { logout } = useCurrentUser();
+  const navigate = useNavigate();
+  const { logout, currentUser } = useCurrentUser();
   const [open, setOpen] = useState(null);
 
   const handleOpen = (event) => {
@@ -35,6 +22,11 @@ export default function AccountPopover() {
 
   const handleClose = () => {
     setOpen(null);
+  };
+
+  const handleClickAdmin = () => {
+    setOpen(null);
+    navigate('/admins');
   };
 
   return (
@@ -80,22 +72,18 @@ export default function AccountPopover() {
       >
         <Box sx={{ my: 1.5, px: 2.5 }}>
           <Typography variant="subtitle2" noWrap>
-            {account.displayName}
+            {currentUser.admin_email}
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary' }} noWrap>
-            {account.email}
+            {currentUser.admin_name}
           </Typography>
         </Box>
 
         <Divider sx={{ borderStyle: 'dashed' }} />
 
-        <Stack sx={{ p: 1 }}>
-          {MENU_OPTIONS.map((option) => (
-            <MenuItem key={option.label} onClick={handleClose}>
-              {option.label}
-            </MenuItem>
-          ))}
-        </Stack>
+        <MenuItem onClick={handleClickAdmin} sx={{ m: 1 }}>
+          <Icon icon="ri:admin-fill" /> จัดการเเอดมิน
+        </MenuItem>
 
         <Divider sx={{ borderStyle: 'dashed' }} />
 
